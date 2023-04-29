@@ -1,6 +1,6 @@
 use crate::utils::StripTrailingNewline;
 use anyhow::{anyhow, Context, Result};
-use id3::{Tag, TagLike};
+use id3::TagLike;
 use itertools::Itertools;
 use std::process::{Command, Stdio};
 
