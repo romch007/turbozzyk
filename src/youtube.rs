@@ -61,32 +61,31 @@ impl YouTube {
             .arg("--extract-audio")
             .arg("--audio-quality=0")
             .arg("--audio-format=mp3")
+            .arg("--concurrent-fragments=8")
             .arg(format!("--output={}/%(id)s", &self.datadir))
-            .arg(video.get_url())
-            .stdout(Stdio::inherit())
+            .arg(video.url())
+            .stdout(Stdio::null())
             .status()?;
 
         if !status.success() {
-            return Err(anyhow!(
-                "{} exited with exit status {}",
-                self.command,
-                status
-            ));
+            return Err(anyhow!("{} exited: {}", self.command, status));
         }
-
-        let filename = format!("{}/{}.mp3", self.datadir, video.id);
 
         let mut tag = id3::Tag::new();
         tag.set_title(video.title.clone());
         tag.set_artist(video.channel.clone());
-        tag.write_to_path(filename, id3::Version::Id3v24)?;
+        tag.write_to_path(video.path(&self.datadir), id3::Version::Id3v24)?;
 
         Ok(())
     }
 }
 
 impl Video {
-    pub fn get_url(&self) -> String {
+    pub fn url(&self) -> String {
         format!("https://youtube.com/watch?v={}", self.id)
+    }
+
+    pub fn path(&self, data_dir: &String) -> String {
+        format!("{}/{}.mp3", data_dir, self.id)
     }
 }

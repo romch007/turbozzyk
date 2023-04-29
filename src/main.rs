@@ -10,7 +10,7 @@ use std::{env, fs, path::Path};
 use youtube::YouTube;
 
 const ZYKK_PLAYLIST_URL: &str =
-    "https://www.youtube.com/playlist?list=PLiIXVpAU1vgSko5Rb26ViltdPvkCFl-qt";
+    "https://www.youtube.com/playlist?list=PL8-0BGNjDQR5DfYVRduznf9b404uYXtu5";
 
 fn ensure_data_dir(dirname: &String) -> Result<()> {
     if !Path::new(dirname).exists() {
@@ -36,12 +36,26 @@ fn start_app() -> Result<()> {
     let videos = client.get_playlist(ZYKK_PLAYLIST_URL)?;
 
     info!("Done.");
+    let video_count = videos.len();
+    let mut i = 0;
     for target_video in &videos {
+        i += 1;
+        if Path::new(&target_video.path(&client.datadir)).exists() {
+            info!(
+                "({}/{}) '{}' by '{}' already downloaded, skipping...",
+                i, video_count, target_video.title, target_video.channel
+            );
+            continue;
+        }
+
         info!(
-            "Downloading video '{}' by {}...",
-            target_video.title, target_video.channel
+            "({}/{}) Downloading video '{}' by '{}'...",
+            i, video_count, target_video.title, target_video.channel
         );
-        client.download_video(target_video)?;
+        let res = client.download_video(target_video);
+        if let Err(err) = res {
+            error!("Failed to download video, reason: {}", err.to_string());
+        }
     }
 
     Ok(())
