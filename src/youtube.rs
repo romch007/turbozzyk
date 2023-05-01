@@ -65,12 +65,20 @@ impl YouTube {
             .arg(format!("--output={}/%(id)s", &self.datadir))
             .arg(video.url())
             .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .stdin(Stdio::null())
             .status()?;
 
         if !status.success() {
             return Err(anyhow!("{} exited: {}", self.command, status));
         }
 
+        self.write_metadata(video)?;
+
+        Ok(())
+    }
+
+    fn write_metadata(&self, video: &Video) -> Result<()> {
         let mut tag = id3::Tag::new();
         tag.set_title(video.title.clone());
         tag.set_artist(video.channel.clone());

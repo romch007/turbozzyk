@@ -6,6 +6,7 @@ pub mod utils;
 pub mod youtube;
 
 use anyhow::Result;
+use id3::TagLike;
 use std::{env, fs, path::Path};
 use youtube::YouTube;
 
@@ -16,6 +17,40 @@ fn ensure_data_dir(dirname: &String) -> Result<()> {
     if !Path::new(dirname).exists() {
         info!("Data dir '{}' does not exist, creating it...", dirname);
         fs::create_dir(dirname)?;
+    } else {
+        cleanup_data_dir(dirname)?;
+    }
+
+    Ok(())
+}
+
+fn cleanup_data_dir(dirname: &String) -> Result<()> {
+    info!("Cleaning up data dir...");
+    for file in fs::read_dir(dirname)? {
+        let file = file?;
+        let maybe_filename = file.file_name().into_string();
+        let path = file.path();
+        if let Ok(filename) = maybe_filename {
+            // Remove file if its not an audio file
+            if !filename.ends_with(".mp3") {
+                fs::remove_file(&path)?;
+                continue;
+            }
+
+            // Partially downloaded files do not have ID3 metadatas
+            let should_remove_file = match id3::Tag::read_from_path(&path) {
+                Ok(tag) => tag.title().is_none(),
+                Err(id3::Error {
+                    kind: id3::ErrorKind::NoTag,
+                    ..
+                }) => true,
+                Err(e) => return Err(anyhow::Error::from(e)),
+            };
+
+            if should_remove_file {
+                fs::remove_file(&path)?;
+            }
+        }
     }
 
     Ok(())
