@@ -31,21 +31,16 @@ fn cleanup_data_dir(dirname: &String) -> Result<()> {
         let maybe_filename = file.file_name().into_string();
         let path = file.path();
         if let Ok(filename) = maybe_filename {
-            // Remove file if its not an audio file
-            if !filename.ends_with(".mp3") {
-                fs::remove_file(&path)?;
-                continue;
-            }
-
             // Partially downloaded files do not have ID3 metadatas
-            let should_remove_file = match id3::Tag::read_from_path(&path) {
-                Ok(tag) => tag.title().is_none(),
-                Err(id3::Error {
-                    kind: id3::ErrorKind::NoTag,
-                    ..
-                }) => true,
-                Err(e) => return Err(anyhow::Error::from(e)),
-            };
+            let should_remove_file = !filename.ends_with(".mp3")
+                || match id3::Tag::read_from_path(&path) {
+                    Ok(tag) => tag.title().is_none(),
+                    Err(id3::Error {
+                        kind: id3::ErrorKind::NoTag,
+                        ..
+                    }) => true,
+                    Err(e) => return Err(anyhow::Error::from(e)),
+                };
 
             if should_remove_file {
                 fs::remove_file(&path)?;
